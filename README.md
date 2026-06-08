@@ -118,7 +118,7 @@ Fees: `grid_fee = base_fee` (normal), `base_fee × (1 − reduction)` (low), `ba
 
 ## SLP neutrality check (Modul 3 § 14a EnWg)
 
-By default, each `generate_grid_fee_timeseries` call checks that the **BDEW household profile** (sheet `H25` in `profile_bdew.xlsx`) does not yield a **lower** average fee than the pauschal reference (`base_fee` or `p_min`). On violation you get a `UserWarning` only—no extra output columns.
+By default, each `generate_grid_fee_timeseries` call checks that the **BDEW household profile** (sheet `H25` in `profile_bdew.xlsx`) does not yield a **lower** average fee than the pauschal reference (`base_fee` or `p_min`). Weights use the entdynamisierte Hilfsmatrix multiplied by the BDEW **Dynamisierungsfaktor** F_t (H25/P25/S25; not G25/L25). The `Dynamisierung` sheet in the workbook defines which profiles are dynamized when populated. On violation you get a `UserWarning`.
 
 ```python
 # Disable if needed

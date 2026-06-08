@@ -34,8 +34,12 @@ def check_h0_slp_neutrality(
     """
     Verify Modul 3 § 14a style H0 neutrality: BDEW-weighted mean ``grid_fee`` ≥ pauschal/ST.
 
-    Uses ``profile_bdew.xlsx`` (default sheet ``H25``). On violation emits ``UserWarning``
-    and returns ``False``. Does not modify ``result``.
+    Uses ``profile_bdew.xlsx`` (default sheet ``H25``). Entdynamisierte profiles (H25, P25,
+    S25) are weighted with the BDEW Dynamisierungsfaktor F_t per calendar day; G25/L25 use
+    the Hilfsmatrix values directly. Mapping is read from the ``Dynamisierung`` sheet when
+    populated, otherwise BDEW defaults apply.
+
+    On violation emits ``UserWarning`` and returns ``False``. Does not modify ``result``.
 
     Pauschal reference: ``base_fee`` (TopN, Quantile, Subscription) or ``p_min`` (load-linear).
     """

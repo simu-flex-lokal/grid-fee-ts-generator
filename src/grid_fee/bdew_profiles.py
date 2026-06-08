@@ -7,6 +7,12 @@ from typing import Literal
 
 import pandas as pd
 
+from grid_fee.bdew_dynamization import (
+    bdew_dynamization_factor,
+    load_dynamization_mapping,
+    profile_requires_dynamization,
+)
+
 DayType = Literal["SA", "FT", "WT"]
 DAY_TYPE_ORDER: tuple[DayType, ...] = ("SA", "FT", "WT")
 SLOTS_PER_DAY = 96
@@ -22,6 +28,7 @@ class BdewProfileTable:
 
     profile_code: str
     values: tuple[tuple[tuple[float, ...], ...], ...]  # [month 0..11][day_type 0..2][slot 0..95]
+    requires_dynamization: bool = False
 
     def weight(self, month: int, day_type: DayType, slot: int) -> float:
         if not 1 <= month <= 12:
@@ -132,7 +139,17 @@ def load_bdew_profile_xlsx(
     nested = tuple(
         tuple(tuple(month_row) for month_row in month_block) for month_block in values
     )
-    return BdewProfileTable(profile_code=profile_code, values=nested)
+    dynamization_mapping = load_dynamization_mapping(str(profile_path))
+    requires_dynamization = profile_requires_dynamization(
+        profile_code,
+        sheet_name,
+        dynamization_mapping,
+    )
+    return BdewProfileTable(
+        profile_code=profile_code,
+        values=nested,
+        requires_dynamization=requires_dynamization,
+    )
 
 
 @lru_cache(maxsize=8)
@@ -167,8 +184,11 @@ def build_bdew_weights_for_timestamps(
     """
     Build H0/SLP weights for each output timestamp using the BDEW 15-minute table.
 
+    For entdynamisierte profiles (H25, P25, S25 by default), each weight is
+    multiplied by the BDEW Dynamisierungsfaktor F_t for the calendar day.
+
     For steps longer than 15 minutes, sums the underlying quarter-hour weights
-  for the half-open interval ``[t, t + step)``.
+    for the half-open interval ``[t, t + step)``.
     """
     ts = pd.Series(pd.to_datetime(timestamps, utc=True)).reset_index(drop=True)
     step_min = _infer_step_minutes(ts)
@@ -188,13 +208,18 @@ def build_bdew_weights_for_timestamps(
         local = t.tz_convert("Europe/Berlin") if t.tzinfo is not None else t
         day_type = classify_bdew_day_type(t)
         month = local.month
+        day_factor = (
+            bdew_dynamization_factor(int(local.dayofyear))
+            if profile.requires_dynamization
+            else 1.0
+        )
         start_slot = (local.hour * 60 + local.minute) // 15
         total = 0.0
         for offset in range(steps_per_slot):
             slot = start_slot + offset
             if slot >= SLOTS_PER_DAY:
                 break
-            total += profile.weight(month, day_type, slot)
+            total += profile.weight(month, day_type, slot) * day_factor
         weights.append(total)
 
     return pd.Series(weights, index=ts.index, dtype=float)
