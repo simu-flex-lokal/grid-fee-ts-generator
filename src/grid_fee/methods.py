@@ -13,6 +13,7 @@ Architecture layers in this module:
    - convert low/high masks to actual fee values and output flags
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import timedelta
 from typing import ClassVar, Literal
@@ -622,3 +623,55 @@ class SubscriptionCapacityMethod:
             index=index,
         )
         return details
+
+
+_METHOD_IDS: tuple[str, ...] = (
+    "topn_peak_reference_day",
+    "quantile_daily_budget",
+    "load_linear_daily",
+    "subscription_capacity",
+)
+
+
+def create_methods_from_config(
+    config: Mapping[str, Mapping[str, object]],
+) -> dict[
+    str,
+    TopNPeakReferenceDayMethod
+    | QuantileDailyBudgetMethod
+    | LoadLinearDailyMethod
+    | SubscriptionCapacityMethod,
+]:
+    """
+    Build all four built-in grid-fee methods from a nested parameter mapping.
+
+    ``config`` keys must be the method IDs (e.g. from
+    :func:`grid_fee.method_config.load_methods_config_from_excel`).
+    Each value is a flat dict of parameter names to values passed to
+    :func:`grid_fee.registry.create_method`.
+    """
+    from grid_fee.method_config import METHOD_SHEET_NAMES
+    from grid_fee.registry import create_method
+
+    expected = set(METHOD_SHEET_NAMES)
+    provided = set(config)
+    missing = expected - provided
+    if missing:
+        missing_repr = ", ".join(sorted(missing))
+        raise ValueError(f"Method config is missing method(s): {missing_repr}.")
+    unknown = provided - expected
+    if unknown:
+        unknown_repr = ", ".join(sorted(unknown))
+        raise ValueError(f"Method config contains unknown method(s): {unknown_repr}.")
+
+    methods: dict[
+        str,
+        TopNPeakReferenceDayMethod
+        | QuantileDailyBudgetMethod
+        | LoadLinearDailyMethod
+        | SubscriptionCapacityMethod,
+    ] = {}
+    for method_id in _METHOD_IDS:
+        params = dict(config[method_id])
+        methods[method_id] = create_method(method_id, **params)
+    return methods

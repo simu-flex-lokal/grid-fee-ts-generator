@@ -82,6 +82,29 @@ method = create_method(
 
 Supported names: `topn_peak_reference_day`, `quantile_daily_budget`, `load_linear_daily`, `subscription_capacity`.
 
+### Configure via Excel
+
+Edit [examples/method_config.xlsx](examples/method_config.xlsx): one sheet per method with columns `parameter`, `value`, and `description`. Empty value cells use registry defaults.
+
+```python
+from grid_fee import (
+    load_methods_config_from_excel,
+    create_methods_from_config,
+    generate_grid_fee_timeseries,
+)
+
+config = load_methods_config_from_excel("examples/method_config.xlsx")
+methods = create_methods_from_config(config)
+
+result = generate_grid_fee_timeseries(
+    frame,
+    signal_column="market_price",
+    method=methods["topn_peak_reference_day"],
+)
+```
+
+You can also pass a dict directly to `create_methods_from_config` without Excel. Regenerate the template after parameter changes with `python scripts/generate_method_config_template.py`.
+
 ### Window methods (TopN & Quantile)
 
 Shared rules:
