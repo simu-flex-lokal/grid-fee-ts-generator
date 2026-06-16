@@ -282,7 +282,7 @@ class TopNPeakReferenceDayMethod:
     window_size_hours_high: float = 4.0
     time_window_start_hour: int | None = None
     time_window_end_hour: int | None = None
-    use_reference_day: bool = True
+    use_reference_day: bool = False
     name: str = "topn_peak_reference_day"
 
     def __post_init__(self) -> None:
